@@ -93,12 +93,13 @@
     private void CalculateCurrentTime(Object source, ElapsedEventArgs e)
     {
         Time--;
-        StateHasChanged();
 
         if (Time == 0)
         {
             StopTimer();
         }
+
+        InvokeAsync(() => StateHasChanged());
     }
 
     private void StopTimer()
