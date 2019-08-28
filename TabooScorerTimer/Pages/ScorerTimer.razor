@@ -64,33 +64,45 @@
     </div>
 </div>
 
-@code 
+@code
 {
     private string TimerVerb { get; set; } = "Start";
-    private Timer Timer { get; set; }
     private const int TIMER_INTERVAL = 1000;
     private int Time { get; set; } = 60;
     private int TeamAScore { get; set; } = 0;
     private int TeamBScore { get; set; } = 0;
+    System.Threading.CancellationTokenSource _cancelTimer;
 
     private void HandleOnTimerClick()
     {
         SetTimerVerb();
 
-        if(TimerVerb == "Reset")
+        if (TimerVerb == "Reset")
         {
-            Timer = new Timer(1000);
-            Timer.Elapsed += CalculateCurrentTime;
-            Timer.Start();
+            // start timer
+            _ = ScheduleTick();
         }
         else
         {
-            Timer.Stop();
-            Timer.Dispose();
+            // stop timer
+            _cancelTimer.Cancel();
         }
     }
 
-    private void CalculateCurrentTime(Object source, ElapsedEventArgs e)
+    async Task ScheduleTick()
+    {
+        using (_cancelTimer)
+            _cancelTimer = new System.Threading.CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(TIMER_INTERVAL, _cancelTimer.Token);
+            CalculateCurrentTime();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void CalculateCurrentTime()
     {
         Time--;
 
@@ -98,14 +110,21 @@
         {
             StopTimer();
         }
+        else
+        {
+            _ = ScheduleTick();
+        }
 
-        InvokeAsync(() => StateHasChanged());
+        StateHasChanged();
     }
 
     private void StopTimer()
     {
-        Timer.Stop();
-        Timer.Dispose();
+        using (_cancelTimer)
+            _cancelTimer.Cancel();
+
+        _cancelTimer = null;
+
         TimerVerb = "Start";
         Time = 60;
     }
